@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/css/bootstrap.min.css" integrity="sha384-Zug+QiDoJOrZ5t4lssLdxGhVrurbmBWopoEl+M6BdEfwnCJZtKxi1KgxUyJq13dy" crossorigin="anonymous">
+
+
+    <title>HUC 12 Lookup Tool</title>
+    <style>
+        div {
+            text-indent: 20px;
+        }
+        .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div>
+    <p><b>Instructions: </b></p>
+    <p>Please use the following drop down list to find the HUC-12 code for each proposed project site.</p>
+
+    <div><select id="select_state">
+        <option>State</option>
+
+    </select>
+    <select id="select_county" disabled="disabled">
+        <option>County</option>
+    </select>
+    <select id="select_watershed" disabled="disabled">
+        <option>Watershed</option>
+    </select>
+    <input id="huc" disabled="disabled">
+    </div>
+</div>
+<br>
+<div>
+    <p><i>Having trouble finding your watershed? Try our <a href="http://glcommission.maps.arcgis.com/apps/webappviewer/index.html?id=161a9d9ae9824ee6b7e1580248533765" target="_blank">online mapping tool</a>. </i></p>
+</div>
+<div class="footer">
+    <img src="GLC-Logo-20090820-FINAL-WEB-TRANSPARENT-250pxwx90pxh.png">
+    <p>Powered by <a href="http://glc.org">Great Lakes Commission</a></p>
+</div>
+
+</body>
+<script>
+    $(document).ready(function() {
+        var data;
+        $.getJSON("HUC12_in_county.json", function (d) {
+            data = d;
+            var states = [];
+            d.map(function(d){
+                if(states.indexOf(d.STATE) == -1){
+                    states.push(d.STATE)
+                }
+            });
+
+            states.forEach(function(s){
+                $("#select_state").append("<option>"+s+"</option>");
+            });
+        });
+
+        $("#select_state").change(function(){
+            $(".counties").remove();
+            $(".watersheds").remove();
+            $("#select_watershed").prop('disabled', true);
+            $("#huc").val("");
+            var countyList = [];
+            if($("#select_state").text != "State"){
+                $("#select_county").prop('disabled', false);
+            }
+            var counties = $(data).filter(function(i, n){
+//                alert($("#select_state option:selected" ).text());
+                return n.STATE === $("#select_state option:selected" ).text();
+            });
+
+            for(var i = 0; i < counties.length; i++){
+                if(!countyList.includes(counties[i].NAME_1)){
+                    countyList.push(counties[i].NAME_1);
+                }
+            }
+            countyList.sort();
+            countyList.forEach(function(c){
+                $("#select_county").append("<option class='counties'>"+c+"</option>");
+            });
+        });
+
+        $("#select_county").change(function(){
+            $(".watersheds").remove();
+            $("#huc").val("");
+            var watershedList = [];
+            if($("#select_county").text != "County"){
+                $("#select_watershed").prop('disabled', false);
+            }
+            var watersheds = $(data).filter(function(i, n){
+//                alert($("#select_state option:selected" ).text());
+                return n.STATE === $("#select_state option:selected" ).text() && n.NAME_1 === $("#select_county option:selected" ).text();
+            });
+
+            for(var i = 0; i < watersheds.length; i++){
+                if(!watershedList.includes(watersheds[i].Name)){
+                    watershedList.push(watersheds[i].Name);
+                }
+            }
+            watershedList.sort();
+            watershedList.forEach(function(c){
+                $("#select_watershed").append("<option class='watersheds'>"+c+"</option>");
+            });
+        });
+
+        $("#select_watershed").change(function(){
+            $("#huc").val("");
+            if($("#select_watershed option:selected" ).text() === "Watershed"){
+                return;
+            }
+            var watershedList = [];
+            if($("#select_county").text != "County"){
+                $("#select_watershed").prop('disabled', false);
+            }
+            var watersheds = $(data).filter(function(i, n){
+//                alert($("#select_state option:selected" ).text());
+                return n.STATE === $("#select_state option:selected" ).text() && n.NAME_1 === $("#select_county option:selected" ).text() && n.Name === $("#select_watershed option:selected" ).text();
+            });
+
+            $("#huc").val(watersheds[0].HUC12);
+        });
+    });
+</script>
+</html>
